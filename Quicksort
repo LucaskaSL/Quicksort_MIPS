@@ -1,0 +1,181 @@
+.data
+meu_array: .space 24 #se quiser colocar mais elementos, altere aqui (tamanho_array * 4)
+tamanho_array: .word 6 #se quiser colocar mais elementos, altere aqui
+msg1: .asciiz "Array antes: "
+msg2: .asciiz "Array depois: "
+quebra_linha: .asciiz "\n"
+espaço_entre_inteiros: .asciiz " "
+
+.text
+main:
+	#carrega os valores do array para um reg que permanece após loops
+	la $s0, meu_array
+    	li $s1, 0
+    	lw $s2, tamanho_array
+    	
+	loop1_antes:
+		#coloca os valores dos inteiros em cada índice do array
+		li $v0, 5
+		syscall
+		move $t1, $v0
+		sw $t1, 0($s0)
+	
+		addi $s0, $s0, 4 #muda para o próximo endereço do índice do array(4 bytes de distância)
+    	
+    		#finalização do loop
+    		addi $s1, $s1, 1 #incremento em 1 do i em $s1
+    		blt $s1, $s2, loop1_antes #verifica se i < 6
+	
+	la $s0, meu_array #volta o ponteiro para o início do array(pois eu desloquei ele pra poder escrever os inteiros)
+    	li $s1, 0 #zera o contador de índice
+    	
+	#imprimir a mensagem do array antes da ordenação
+	li   $v0, 4
+    	la   $a0, msg1
+    	syscall
+    	
+    	#começo do loop antes da ordenação
+    	loop_antes: 	
+    		#impressão do array
+    		lw $a0, 0($s0) #imprime cada índice do array
+    		li $v0, 1
+    		syscall
+    	
+    		li $v0, 4
+    		la $a0, espaço_entre_inteiros #imprime o espaço entre os inteiros
+    		syscall
+    	
+    	 	addi $s0, $s0, 4 #muda para o próximo endereço do índice do array(4 bytes de distância)
+    	
+    		#finalização do loop
+    		addi $s1, $s1, 1 #incremento em 1 do i em $s1
+    		blt $s1, $s2, loop_antes #verifica se i < 4  	
+    	end_antes:
+    	
+    	li $v0, 4
+    	la $a0, quebra_linha #imprime a quebra de linha
+    	syscall
+    	
+    	#preparação para o quicksort
+    	la $s0, meu_array #volta o ponteiro pro início do array(pois eu desloquei ele pra poder imprimir os inteiros)
+    	li $s1, 0 #zera o contador de índice
+    	move $a1, $s1 #o low da primeira chamada é 0
+    	subi $a2, $s2, 1 #o high da primeira chamada é o tamanho do array - 1
+    	jal quicksort
+    	
+    	#imprimir a mensagem do array depois da ordenação
+	li   $v0, 4
+    	la   $a0, msg2
+    	syscall
+    	
+    	#loop para imprimir o array depois de ordenado
+    	loop_depois:
+    		#impressão do array
+    		lw $a0, 0($s0) #imprime cada índice do array
+    		li $v0, 1
+    		syscall
+    	
+    		li $v0, 4
+    		la $a0, espaço_entre_inteiros #imprime o espaço entre os inteiros
+    		syscall
+    	
+    	 	addi $s0, $s0, 4 #muda para o próximo endereço do índice do array(4 bytes de distância)
+    	
+    		#finalização do loop
+    		addi $s1, $s1, 1 #incremento em 1 do i em $s1
+    		blt $s1, $s2, loop_depois #verifica se i < 4  	
+    	end_depois:
+    	
+#saída do programa
+li $v0, 10
+syscall    	
+
+particionamento:
+    	sll $t9, $a1, 2
+    	add $t9, $t9, $s0
+    	lw $a0, 0($t9) #o pivô recebe o valor de array[low]
+    	
+    	move $t0, $a1 #$t0 recebe low, sendo o i que será iteraado
+    	move $t1, $a2 #$t1 recebe high, sendo o j que será iterado
+    	
+    	primeira_condição:
+    		bge $t0, $t1, fim_primeira_condição #low >= high pula para fora da função	
+    	
+    		segunda_condição:
+    		sll $t5, $t0, 2
+    		add $t5, $t5, $s0
+    		lw $t2, 0($t5) #é literalmente o array[low]
+    		
+    		bgt $t2, $a0, terceira_condição #se array[low] > pivô pula para próxima condição
+    		subi $t4, $a2, 1 # $t4 == high - 1
+    		bgt $t0, $t4, terceira_condição #se low > high - 1 pula para próxima condição
+    		addi $t0, $t0, 1 #low++
+    		j segunda_condição
+    		
+    		terceira_condição:
+    		sll $t6, $t1, 2
+    		add $t6, $t6, $s0
+    		lw $t3, 0($t6) #é literalmente o array[high]
+    		
+    		ble $t3, $a0, quarta_condição #se array[high] <= pivô pula para próxima condição
+    		addi $t4, $a1, 1
+    		blt $t1, $t4, quarta_condição, #se high < low + 1 pula para próxima condição
+    		subi $t1, $t1, 1 #high--
+    		j terceira_condição 
+    		
+    		quarta_condição:
+    		bge $t0, $t1, fim_quarta_condição #se low >= high sai dessa condição
+    		sw $t2, 0($t6) #array[low] = array[high]
+    		sw $t3, 0($t5) #array[high] = array[low]
+    		fim_quarta_condição:
+    		
+    		j primeira_condição
+    	fim_primeira_condição:
+    	sll $t7, $a1, 2
+    	add $t7, $t7, $s0
+    	lw $t8, 0($t7) #array[low]
+    	
+    	sll $t4, $t1, 2
+    	add $t4, $t4, $s0
+    	lw $t9, 0($t4) #array[j] 
+    	
+    	sw $t8, 0($t4) #array[low] = array[j] 
+    	sw $t9, 0($t7) #array[j] = array[low]
+    	
+    	move $v1, $t1
+    	jr $ra
+    	fim_particionamento:
+    	
+quicksort:
+#na main já está definido os valores em $a1 e $a2
+    	subu $sp, $sp, 16 #separo um espaço de 12 bytes (3 inteiros) para trabalhar com o $ra e os parâmetros
+    	sw $ra, 12($sp) #$ra como referência de retorno
+    	sw $a1, 8($sp) #low
+    	sw $a2, 4($sp) #high
+    		
+    	bge $a1, $a2, fim_quicksort #se low >= high, pula para o fim do quicksort
+  
+    		jal particionamento
+    		sw $v1, 0($sp) #guarda o resultado do particionamento na pilha 
+    		
+    		#chamada da esquerda
+    		lw $t0, 0($sp) #pega o valor original do pivô na pilha e guarda num reg 
+    		subi $t1, $t0, 1 #$t1 recebe pivô - 1
+    		move $a2, $t1 #coloca o valor em $a2 para alterar o argumento e fazer a recurssão corretamente
+    		jal quicksort
+    		
+    		#chamada da direita
+    		lw $t0, 0($sp) #pega o valor original do pivô na pilha
+    		lw $a2, 4($sp) #pega o valor original do high na pilha (que foi alterado na recurssão anterior)
+    		addi $t2, $t0, 1 #t2 recebe o pivô + 1
+    		move $a1, $t2 #coloca o valor em $a1 para alterar o argumento e fazer a recurssão corretamente
+    		jal quicksort
+    	
+    	fim_quicksort:
+    	#fecha a pilha corretamente
+    		lw $ra, 12($sp)
+    		lw $a1, 8($sp) #opcional, pois não usarei depois, então não há necessidade de retirar da pilha
+    		lw $a2, 4($sp) #opcional, pois não usarei depois, então não há necessidade de retirar da pilha
+    		lw $a0, 0($sp) #opcional, pois não usarei depois, então não há necessidade de retirar da pilha
+    		addu $sp, $sp, 16 #restaura os 16 bytes da pilha que tinha separado anteriormente
+    		jr $ra
